@@ -1281,10 +1281,11 @@ ProcessAlterTableStmtAttachPartition(AlterTableStmt *alterTableStatement)
 				char distributionMethod = DISTRIBUTE_BY_HASH;
 				char *parentRelationName = generate_qualified_relation_name(relationId);
 				bool viaDeprecatedAPI = false;
+				bool ignoreWorkerConnectErrors = true;
 
 				CreateDistributedTable(partitionRelationId, distributionColumn,
 									   distributionMethod, parentRelationName,
-									   viaDeprecatedAPI);
+									   viaDeprecatedAPI, ignoreWorkerConnectErrors);
 			}
 		}
 	}
