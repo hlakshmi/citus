@@ -80,7 +80,7 @@ int ReplicationModel = REPLICATION_MODEL_COORDINATOR;
 /* local function forward declarations */
 static char AppropriateReplicationModel(char distributionMethod, bool viaDeprecatedAPI);
 static void CreateHashDistributedTableShards(Oid relationId, Oid colocatedTableId,
-											 bool localTableEmpty);
+											 bool localTableEmpty, bool ignoreWorkerConnectErrors);
 static uint32 ColocationIdForNewTable(Oid relationId, Var *distributionColumn,
 									  char distributionMethod, char replicationModel,
 									  char *colocateWithTableName, bool viaDeprecatedAPI);
@@ -161,7 +161,7 @@ master_create_distributed_table(PG_FUNCTION_ARGS)
 	distributionMethod = LookupDistributionMethod(distributionMethodOid);
 
 	CreateDistributedTable(relationId, distributionColumn, distributionMethod,
-						   colocateWithTableName, viaDeprecatedAPI);
+						   colocateWithTableName, viaDeprecatedAPI, false);
 
 	relation_close(relation, NoLock);
 
@@ -227,7 +227,7 @@ create_distributed_table(PG_FUNCTION_ARGS)
 	colocateWithTableName = text_to_cstring(colocateWithTableNameText);
 
 	CreateDistributedTable(relationId, distributionColumn, distributionMethod,
-						   colocateWithTableName, viaDeprecatedAPI);
+						   colocateWithTableName, viaDeprecatedAPI, false);
 
 	relation_close(relation, NoLock);
 
@@ -292,7 +292,7 @@ create_reference_table(PG_FUNCTION_ARGS)
 	}
 
 	CreateDistributedTable(relationId, distributionColumn, DISTRIBUTE_BY_NONE,
-						   colocateWithTableName, viaDeprecatedAPI);
+						   colocateWithTableName, viaDeprecatedAPI, false);
 
 	relation_close(relation, NoLock);
 
@@ -314,7 +314,7 @@ create_reference_table(PG_FUNCTION_ARGS)
  */
 void
 CreateDistributedTable(Oid relationId, Var *distributionColumn, char distributionMethod,
-					   char *colocateWithTableName, bool viaDeprecatedAPI)
+					   char *colocateWithTableName, bool viaDeprecatedAPI, bool ignoreWorkerConnectErrors)
 {
 	char replicationModel = REPLICATION_MODEL_INVALID;
 	uint32 colocationId = INVALID_COLOCATION_ID;
@@ -369,7 +369,7 @@ CreateDistributedTable(Oid relationId, Var *distributionColumn, char distributio
 	/* create shards for hash distributed and reference tables */
 	if (distributionMethod == DISTRIBUTE_BY_HASH)
 	{
-		CreateHashDistributedTableShards(relationId, colocatedTableId, localTableEmpty);
+		CreateHashDistributedTableShards(relationId, colocatedTableId, localTableEmpty, ignoreWorkerConnectErrors);
 	}
 	else if (distributionMethod == DISTRIBUTE_BY_NONE)
 	{
@@ -402,7 +402,7 @@ CreateDistributedTable(Oid relationId, Var *distributionColumn, char distributio
 			Oid partitionRelationId = lfirst_oid(partitionCell);
 			CreateDistributedTable(partitionRelationId, distributionColumn,
 								   distributionMethod, colocateWithTableName,
-								   viaDeprecatedAPI);
+								   viaDeprecatedAPI, ignoreWorkerConnectErrors);
 		}
 	}
 
@@ -476,7 +476,7 @@ AppropriateReplicationModel(char distributionMethod, bool viaDeprecatedAPI)
  */
 static void
 CreateHashDistributedTableShards(Oid relationId, Oid colocatedTableId,
-								 bool localTableEmpty)
+								 bool localTableEmpty, bool ignoreWorkerConnectErrors)
 {
 	bool useExclusiveConnection = false;
 
@@ -502,7 +502,7 @@ CreateHashDistributedTableShards(Oid relationId, Oid colocatedTableId,
 
 	if (colocatedTableId != InvalidOid)
 	{
-		CreateColocatedShards(relationId, colocatedTableId, useExclusiveConnection);
+		CreateColocatedShards(relationId, colocatedTableId, useExclusiveConnection, ignoreWorkerConnectErrors);
 	}
 	else
 	{

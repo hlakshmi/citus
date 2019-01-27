@@ -148,7 +148,7 @@ extern void UpdateColocationGroupReplicationFactor(uint32 colocationId,
 												   int replicationFactor);
 extern void CreateDistributedTable(Oid relationId, Var *distributionColumn,
 								   char distributionMethod, char *colocateWithTableName,
-								   bool viaDeprecatedAPI);
+								   bool viaDeprecatedAPI, bool ignoreWorkerConnectErrors);
 extern void CreateTruncateTrigger(Oid relationId);
 
 /* Remaining metadata utility functions  */

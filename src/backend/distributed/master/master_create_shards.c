@@ -235,7 +235,7 @@ CreateShardsWithRoundRobinPolicy(Oid distributedTableId, int32 shardCount,
 	}
 
 	CreateShardsOnWorkers(distributedTableId, insertedShardPlacements,
-						  useExclusiveConnections, colocatedShard);
+						  useExclusiveConnections, colocatedShard, false);
 
 	if (QueryCancelPending)
 	{
@@ -253,7 +253,7 @@ CreateShardsWithRoundRobinPolicy(Oid distributedTableId, int32 shardCount,
  */
 void
 CreateColocatedShards(Oid targetRelationId, Oid sourceRelationId, bool
-					  useExclusiveConnections)
+					  useExclusiveConnections, bool ignoreWorkerConnectErrors)
 {
 	char targetShardStorageType = 0;
 	List *existingShardList = NIL;
@@ -335,7 +335,7 @@ CreateColocatedShards(Oid targetRelationId, Oid sourceRelationId, bool
 	}
 
 	CreateShardsOnWorkers(targetRelationId, insertedShardPlacements,
-						  useExclusiveConnections, colocatedShard);
+						  useExclusiveConnections, colocatedShard, ignoreWorkerConnectErrors);
 }
 
 
@@ -411,7 +411,7 @@ CreateReferenceTableShard(Oid distributedTableId)
 													   replicationFactor);
 
 	CreateShardsOnWorkers(distributedTableId, insertedShardPlacements,
-						  useExclusiveConnection, colocatedShard);
+						  useExclusiveConnection, colocatedShard, false);
 }
 
 

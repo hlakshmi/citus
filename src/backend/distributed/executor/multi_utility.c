@@ -1202,10 +1202,11 @@ ProcessCreateTableStmtPartitionOf(CreateStmt *createStatement)
 			char parentDistributionMethod = DISTRIBUTE_BY_HASH;
 			char *parentRelationName = generate_qualified_relation_name(parentRelationId);
 			bool viaDeprecatedAPI = false;
+			bool ignoreWorkerConnectErrors = true;
 
 			CreateDistributedTable(relationId, parentDistributionColumn,
 								   parentDistributionMethod, parentRelationName,
-								   viaDeprecatedAPI);
+								   viaDeprecatedAPI, ignoreWorkerConnectErrors);
 		}
 	}
 #endif

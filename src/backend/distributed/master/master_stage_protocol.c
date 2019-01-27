@@ -415,7 +415,7 @@ CreateAppendDistributedShardPlacements(Oid relationId, int64 shardId,
 		}
 
 		WorkerCreateShard(relationId, shardIndex, shardId, ddlCommandList,
-						  foreignConstraintCommandList, connection);
+						  foreignConstraintCommandList, connection, false);
 
 		InsertShardPlacementRow(shardId, INVALID_PLACEMENT_ID, shardState, shardSize,
 								nodeGroupId);
@@ -484,7 +484,7 @@ InsertShardPlacementRows(Oid relationId, int64 shardId, List *workerNodeList,
  */
 void
 CreateShardsOnWorkers(Oid distributedRelationId, List *shardPlacements,
-					  bool useExclusiveConnection, bool colocatedShard)
+					  bool useExclusiveConnection, bool colocatedShard, bool ignoreWorkerConnectErrors)
 {
 	DistTableCacheEntry *cacheEntry = DistributedTableCacheEntry(distributedRelationId);
 	char *placementOwner = TableOwner(distributedRelationId);
@@ -580,7 +580,7 @@ CreateShardsOnWorkers(Oid distributedRelationId, List *shardPlacements,
 		MarkRemoteTransactionCritical(connection);
 
 		WorkerCreateShard(distributedRelationId, shardIndex, shardId,
-						  ddlCommandList, foreignConstraintCommandList, connection);
+						  ddlCommandList, foreignConstraintCommandList, connection, ignoreWorkerConnectErrors);
 	}
 
 	/*
@@ -603,7 +603,7 @@ CreateShardsOnWorkers(Oid distributedRelationId, List *shardPlacements,
  */
 void
 WorkerCreateShard(Oid relationId, int shardIndex, uint64 shardId, List *ddlCommandList,
-				  List *foreignConstraintCommandList, MultiConnection *connection)
+				  List *foreignConstraintCommandList, MultiConnection *connection, bool ignoreWorkerConnectErrors)
 {
 	Oid schemaId = get_rel_namespace(relationId);
 	char *schemaName = get_namespace_name(schemaId);
@@ -629,7 +629,16 @@ WorkerCreateShard(Oid relationId, int shardIndex, uint64 shardId, List *ddlComma
 							 escapedDDLCommand);
 		}
 
-		ExecuteCriticalRemoteCommand(connection, applyDDLCommand->data);
+		if(ignoreWorkerConnectErrors)
+		{
+			PGresult *queryResult = NULL;
+			ExecuteOptionalRemoteCommand(connection, applyDDLCommand->data, &queryResult);
+		}
+		else
+		{
+			ExecuteCriticalRemoteCommand(connection, applyDDLCommand->data);	
+		}
+		
 	}
 
 	foreach(foreignConstraintCommandCell, foreignConstraintCommandList)
@@ -686,7 +695,16 @@ WorkerCreateShard(Oid relationId, int shardIndex, uint64 shardId, List *ddlComma
 						 referencedShardId, escapedReferencedSchemaName, escapedCommand);
 
 
-		ExecuteCriticalRemoteCommand(connection, applyForeignConstraintCommand->data);
+		if(ignoreWorkerConnectErrors)
+		{
+			PGresult *queryResult = NULL;
+			ExecuteOptionalRemoteCommand(connection, applyForeignConstraintCommand->data, &queryResult);
+		}
+		else
+		{
+			ExecuteCriticalRemoteCommand(connection, applyForeignConstraintCommand->data);	
+		}
+		
 	}
 
 	/*
@@ -697,7 +715,17 @@ WorkerCreateShard(Oid relationId, int shardIndex, uint64 shardId, List *ddlComma
 	{
 		ShardInterval *shardInterval = LoadShardInterval(shardId);
 		char *attachPartitionCommand = GenerateAttachShardPartitionCommand(shardInterval);
-		ExecuteCriticalRemoteCommand(connection, attachPartitionCommand);
+
+		if(ignoreWorkerConnectErrors)
+		{
+			PGresult *queryResult = NULL;
+			ExecuteOptionalRemoteCommand(connection, attachPartitionCommand, &queryResult);
+		}
+		else
+		{
+			ExecuteCriticalRemoteCommand(connection, attachPartitionCommand);	
+		}
+
 	}
 }
 
